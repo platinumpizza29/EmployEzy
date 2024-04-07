@@ -1,0 +1,98 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model CandidateSubmissions {
+    submission_id          BigInt       @id @default(autoincrement())
+    submitted_at           DateTime     @default(now()) @db.Timestamptz(6)
+    opening_id             BigInt?
+    code                   String?
+    ai_evaluation          String?
+    candidate_id           String?      @db.Uuid
+    rating                 Decimal?     @db.Decimal
+    evaluation_received_at DateTime?    @db.Timestamp(6)
+    Users                  Users?       @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
+    JobOpenings            JobOpenings? @relation(fields: [opening_id], references: [opening_id], onDelete: Cascade)
+    Nudges                 Nudges[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model JobOpenings {
+    opening_id                   BigInt                 @unique(map: "JobOpenings_id_key") @default(autoincrement())
+    created_at                   DateTime               @default(now()) @db.Timestamptz(6)
+    org_id                       BigInt
+    opening_name                 String?                @db.VarChar
+    assignment_problem_statement String?                @db.VarChar
+    technical_questions          Json?
+    salary                       Decimal?               @db.Decimal
+    job_tags                     String[]
+    location                     String?                @db.VarChar
+    is_deleted                   Boolean                @default(false)
+    CandidateSubmissions         CandidateSubmissions[]
+    Orgs                         Orgs                   @relation(fields: [org_id], references: [org_id], onDelete: Cascade)
+    Nudges                       Nudges[]
+    SavedJobs                    SavedJobs[]
+
+    @@id([opening_id, org_id])
+}
+
+model Meetings {
+    id         BigInt   @id @default(autoincrement())
+    created_at DateTime @default(now()) @db.Timestamptz(6)
+    date       DateTime @db.Date
+    user_id    String?  @db.Uuid
+    org_id     BigInt?
+    meet_link  String?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model Nudges {
+    id                   BigInt                @id @default(autoincrement())
+    last_nudged_at       DateTime              @default(now()) @db.Timestamptz(6)
+    submission_id        BigInt?
+    candidate_id         String?               @db.Uuid
+    opening_id           BigInt?
+    nudge_message        String?
+    Users                Users?                @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
+    JobOpenings          JobOpenings?          @relation(fields: [opening_id], references: [opening_id], onDelete: Cascade)
+    CandidateSubmissions CandidateSubmissions? @relation(fields: [submission_id], references: [submission_id], onDelete: Cascade)
+}
+
+model Orgs {
+    org_id      BigInt        @unique @default(autoincrement())
+    created_at  DateTime      @default(now()) @db.Timestamptz(6)
+    password    String?
+    email       String        @unique @db.VarChar
+    name        String?       @db.VarChar
+    updated_at  DateTime?     @db.Timestamp(6)
+    JobOpenings JobOpenings[]
+
+    @@id([org_id, email])
+}
+
+model SavedJobs {
+    opening_id   BigInt      @default(autoincrement())
+    created_at   DateTime    @default(now()) @db.Timestamptz(6)
+    candidate_id String      @db.Uuid
+    Users        Users       @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
+    JobOpenings  JobOpenings @relation(fields: [opening_id], references: [opening_id], onDelete: Cascade)
+
+    @@id([opening_id, candidate_id])
+}
+
+model Users {
+    id                   String                 @id @default(dbgenerated("auth.uid()")) @db.Uuid
+    created_at           DateTime               @default(now()) @db.Timestamptz(6)
+    name                 String?
+    email                String?
+    password             String?
+    phone                BigInt?
+    CandidateSubmissions CandidateSubmissions[]
+    Nudges               Nudges[]
+    SavedJobs            SavedJobs[]
+}
